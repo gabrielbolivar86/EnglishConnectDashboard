@@ -3,134 +3,61 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Asistencia</title>
+<meta name="theme-color" content="#218633">
+<title>English Connect</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Scoutie+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="core/estilos.css?v=1">
 </head>
 <body>
 
-<header>
-  <div style="display:flex; align-items:center; justify-content:space-between;">
-    <div>
-      <h1>Asistencia</h1>
-      <p id="fechaHeader"></p>
-    </div>
-    <button onclick="toggleDebug()" style="background:rgba(255,255,255,0.2); color:white; width:34px; height:34px; border-radius:50%; font-size:1em;">🐞</button>
-  </div>
-</header>
-
-<!-- ===== Panel de depuración ===== -->
-<div id="panelDebug" style="display:none; background:#0d1b10; color:#8fe6a0; font-family:monospace; font-size:0.75em; padding:10px 14px; max-height:160px; overflow-y:auto; white-space:pre-wrap;">
-  <div style="display:flex; justify-content:space-between; color:#c9d9cb; font-weight:bold; margin-bottom:6px;">
-    <span>LOG</span>
-    <span onclick="limpiarDebug()" style="cursor:pointer;">limpiar</span>
-  </div>
-  <div id="debugLista"></div>
+<!-- ===== Inicio de sesión (único para todos los roles) ===== -->
+<div id="vistaLogin" class="pantalla-login" hidden>
+  <form class="caja-login" id="formLogin" autocomplete="on">
+    <div class="marca">English<i>Connect</i></div>
+    <p class="sub">Entra con tu usuario y tu PIN.</p>
+    <div class="campo"><input id="loginUsuario" name="username" placeholder="usuario (ej. maria.perez)" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
+    <div class="campo"><input id="loginPin" name="password" type="password" inputmode="numeric" maxlength="8" placeholder="PIN" autocomplete="current-password"></div>
+    <button class="btn principal grande" id="btnLogin" type="submit">Entrar</button>
+    <p class="error-texto" id="errorLogin" role="alert"></p>
+  </form>
 </div>
 
-<!-- ===== Pantalla de reposo ===== -->
-<div id="pantallaReposo">
-  <p>Toca el botón para abrir la cámara y comenzar a registrar la asistencia de hoy.</p>
-  <button class="boton-principal" onclick="comenzarRegistro()">Comenzar registro</button>
-
-  <a href="teacher.html" class="enlace-teacher">🔑 Teacher Center</a>
+<!-- ===== Crear PIN (primer ingreso o código temporal) ===== -->
+<div id="vistaPin" class="pantalla-login" hidden>
+  <form class="caja-login" id="formPin">
+    <div class="marca">Crea tu PIN</div>
+    <p class="sub">Elige un PIN de 4 números. Lo usarás para entrar de ahora en adelante.</p>
+    <div class="campo"><input id="pinNuevo" type="password" inputmode="numeric" maxlength="4" placeholder="PIN nuevo (4 números)" autocomplete="new-password"></div>
+    <div class="campo"><input id="pinRepite" type="password" inputmode="numeric" maxlength="4" placeholder="Repite el PIN" autocomplete="new-password"></div>
+    <button class="btn principal grande" id="btnPin" type="submit">Guardar PIN</button>
+    <p class="error-texto" id="errorPin" role="alert"></p>
+  </form>
 </div>
 
-<!-- ===== Pantalla activa ===== -->
-<div id="pantallaActiva">
-  <div class="barra-estado">
-    <span><span class="punto"></span>En curso</span>
-    <span id="contadorEstado">0 registrados</span>
+<!-- ===== Aplicación ===== -->
+<div id="app" hidden>
+  <header class="barra">
+    <button id="btnVolver" hidden aria-label="Volver">←</button>
+    <div class="titulo-wrap"><h1 id="tituloApp">English Connect</h1><p id="subtituloApp"></p></div>
+    <button id="btnDebug" aria-label="Registro de depuración">🐞</button>
+    <button id="btnSalir">Salir</button>
+  </header>
+  <div class="panel-debug" id="panelDebug" hidden>
+    <div class="cab"><span>LOG</span><span id="limpiarDebug" style="cursor:pointer">limpiar</span></div>
+    <div id="debugLista"></div>
   </div>
-
-  <div id="videoContenedor">
-    <video id="video" playsinline autoplay muted></video>
-    <div id="mensajeCamara">Apunta al QR del alumno y presiona Escanear</div>
-  </div>
-  <canvas id="canvas" hidden></canvas>
-
-  <div class="acciones">
-    <button class="boton-principal" style="padding:16px;" onclick="capturarYEscanear()">📷 Escanear QR</button>
-    <button class="boton-secundario" onclick="abrirModalManual()">+ Registrar manualmente</button>
-  </div>
-
-  <div id="logCompacto">
-    <div class="log-header">
-      <span id="logTitulo">Registrados hoy (0)</span>
-      <button class="boton-expandir" onclick="abrirLogCompleto()">Ver todo ⤢</button>
-    </div>
-    <div class="log-lista" id="logListaCompacta">
-      <div class="log-vacio">Aún no hay registros en esta sesión.</div>
-    </div>
-  </div>
-
-  <div class="barra-inferior">
-    <button class="boton-terminar" onclick="terminarRegistro()">Terminar registro</button>
-  </div>
+  <main id="contenido"></main>
 </div>
 
-<!-- ===== Overlay verde/rojo ===== -->
-<div id="overlayResultado">
-  <div class="icono" id="overlayIcono"></div>
-  <div class="texto" id="overlayTexto"></div>
-</div>
+<div id="toasts"></div>
 
-<!-- ===== Modal registro manual ===== -->
-<div class="modal-fondo" id="modalManual">
-  <div class="modal-caja">
-    <h2 id="modalManualTitulo">Registrar alumno nuevo</h2>
-    <div class="campo">
-      <label>Nombre</label>
-      <input type="text" id="inputNombre" autocomplete="off">
-    </div>
-    <div class="campo">
-      <label>Apellido</label>
-      <input type="text" id="inputApellido" autocomplete="off">
-    </div>
-    <div class="campo">
-      <label>Celular</label>
-      <input type="tel" id="inputCelular" autocomplete="off">
-    </div>
-    <div class="campo">
-      <label>Curso</label>
-      <div class="grupo-botones-curso">
-        <button type="button" class="boton-curso" data-curso="EC1" onclick="seleccionarCurso('EC1')">EC1</button>
-        <button type="button" class="boton-curso" data-curso="EC2" onclick="seleccionarCurso('EC2')">EC2</button>
-        <button type="button" class="boton-curso" data-curso="EC 1 y EC2" onclick="seleccionarCurso('EC 1 y EC2')">EC1 y EC2</button>
-      </div>
-      <input type="hidden" id="inputCurso">
-    </div>
-    <div class="modal-botones">
-      <button class="btn-cancelar" onclick="cerrarModalManual()">Cancelar</button>
-      <button class="btn-guardar" id="btnGuardarManual" onclick="guardarManual()">Agregar</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== Log en pantalla completa ===== -->
-<div id="logCompleto">
-  <div class="log-completo-header">
-    <h2 id="logCompletoTitulo">Registrados hoy (0)</h2>
-    <button class="boton-cerrar" onclick="cerrarLogCompleto()">✕</button>
-  </div>
-  <div id="logCompletoLista"></div>
-</div>
-
-<!-- ===== Resumen final ===== -->
-<div class="modal-fondo" id="modalResumen">
-  <div class="modal-caja">
-    <div class="icono-resumen">✅</div>
-    <h2 id="resumenTitulo">Sesión guardada</h2>
-    <p id="resumenTexto"></p>
-    <div class="modal-botones">
-      <button class="btn-guardar" style="width:100%" onclick="cerrarResumen()">Listo</button>
-    </div>
-  </div>
-</div>
-
-<script src="script.js?v=2"></script>
+<script src="core/config.js?v=1"></script>
+<script src="core/ui.js?v=1"></script>
+<script src="core/api.js?v=1"></script>
+<script src="core/badge.js?v=1"></script>
+<script src="modules/registry.js?v=1"></script>
+<script src="core/app.js?v=1"></script>
 </body>
 </html>
