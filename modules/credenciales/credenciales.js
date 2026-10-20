@@ -55,18 +55,29 @@
     try { r = await ctx.api("credencial_reset", { id: a.id }, { reintentos: 0 }); }
     catch (x) { EC.toast(x.message, "error"); return; }
     const url = location.href.split("#")[0].replace(/index\.html$/, "");
-    const texto = "Hola " + r.nombre + "! Ya puedes entrar a English Connect: " + url + "\nUsuario: " + r.usuario +
-      "\nCódigo temporal: " + r.codigo + " (vale 48 horas).\nAl entrar te pedirá crear tu PIN de 4 números.";
+    const texto =
+      "Hola " + r.nombre + "! 👋\n" +
+      "Ya puedes entrar a ver tu credencial (tu QR) para que te tomen la asistencia durante la clase.\n\n" +
+      "📲 Cómo entrar:\n" +
+      "1. Abre este enlace: " + url + "\n" +
+      "2. En *Usuario* escribe: " + r.usuario + "\n" +
+      "   (es tu primer nombre, un punto y tu primer apellido, todo en minúsculas y sin tildes)\n" +
+      "3. En *PIN* escribe este código temporal: " + r.codigo + "\n" +
+      "   (es solo para tu primer ingreso y vence en 48 horas)\n" +
+      "4. La página te pedirá que crees tu propio PIN de 4 números. Elígelo y recuérdalo: " +
+      "desde ese momento el código temporal ya no funciona y entrarás siempre con tu PIN.\n" +
+      "5. Toca *Mi badge* para ver tu QR y muéstralo al llegar a clase.\n\n" +
+      "Si tienes algún problema para entrar, avísame.";
     const cuerpo = document.createElement("div");
     cuerpo.innerHTML = '<div class="caja" style="text-align:center;margin:0 0 10px"><div class="ayuda">Usuario</div><b style="font-size:1.2em">' + EC.esc(r.usuario) +
       '</b><div class="ayuda" style="margin-top:8px">Código temporal</div><b style="font-size:1.8em;letter-spacing:.15em">' + EC.esc(r.codigo) + "</b></div>" +
-      '<textarea class="input" id="msg" rows="5" readonly style="min-height:110px"></textarea>' +
+      '<textarea class="input" id="msg" rows="10" style="min-height:230px"></textarea><p class="ayuda">Puedes editar el mensaje antes de enviarlo.</p>' +
       (r.celular ? "" : '<p class="error-texto">Este alumno no tiene celular registrado: copia el mensaje y envíalo a mano.</p>');
     cuerpo.querySelector("#msg").value = texto;
     EC.modal({ titulo: "Credenciales de " + r.nombre, cuerpo, enfocar: false, botones: [
-      { texto: "💬 WhatsApp", clase: "principal", accion: () => { EC.abrirWhatsapp(r.celular, texto); return false; } },
+      { texto: "💬 WhatsApp", clase: "principal", accion: () => { EC.abrirWhatsapp(r.celular, cuerpo.querySelector("#msg").value); return false; } },
       { texto: "Copiar", clase: "suave", accion: async () => {
-        try { await navigator.clipboard.writeText(texto); EC.toast("Copiado ✅", "ok"); }
+        try { await navigator.clipboard.writeText(cuerpo.querySelector("#msg").value); EC.toast("Copiado ✅", "ok"); }
         catch (e) { cuerpo.querySelector("#msg").select(); EC.toast("Selecciona y copia el texto.", "info"); }
         return false;
       } },

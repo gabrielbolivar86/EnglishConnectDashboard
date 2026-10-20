@@ -31,7 +31,7 @@
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), op.timeout);
       try {
-        EC.log("→ " + accion + (i ? " (reintento " + i + ")" : ""));
+        if (!op.silencioso) EC.log("→ " + accion + (i ? " (reintento " + i + ")" : ""));
         const r = await fetch(EC.API_URL, {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -55,7 +55,7 @@
           }
           throw err;
         }
-        EC.log("✅ " + accion, "ok");
+        if (!op.silencioso) EC.log("✅ " + accion, "ok");
         return data;
       } catch (e) {
         clearTimeout(t);

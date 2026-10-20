@@ -12,6 +12,8 @@ EC.modulos = [
   { id: "alumnos", grupo: "Administración", icono: "👥", titulo: "Alumnos", desc: "Datos, QR, duplicados y periodos", min: "profesor", js: "modules/alumnos/alumnos.js" },
   { id: "credenciales", grupo: "Administración", icono: "🔑", titulo: "Credenciales", desc: "Usuarios, PIN y envío por WhatsApp", min: "profesor", js: "modules/credenciales/credenciales.js" },
   { id: "periodos", grupo: "Administración", icono: "🗓️", titulo: "Periodos", desc: "Periodos por curso (EC1, EC2…)", min: "profesor", js: "modules/periodos/periodos.js" },
+  { id: "canciones-moderar", grupo: "Administración", icono: "🎶", titulo: "Moderar canciones", desc: "Abrir/cerrar la votación y moderar", min: "profesor", js: "modules/canciones-moderar/canciones-moderar.js", css: "modules/canciones/canciones.css" },
+  { id: "canciones-votar", grupo: "Mi espacio", icono: "🎵", titulo: "Canciones", desc: "Sugiere y vota las canciones de la clase", min: "alumno", js: "modules/canciones-votar/canciones-votar.js", css: "modules/canciones/canciones.css" },
   { id: "mi-badge", grupo: "Mi espacio", icono: "🪪", titulo: "Mi badge", desc: "Tu QR para marcar asistencia", min: "alumno", js: "modules/mi-badge/mi-badge.js" },
   { id: "mi-asistencia", grupo: "Mi espacio", icono: "✅", titulo: "Mi asistencia", desc: "A qué clases has venido", min: "alumno", js: "modules/mi-asistencia/mi-asistencia.js" },
   { id: "cambiar-pin", grupo: "Mi espacio", icono: "🔒", titulo: "Cambiar PIN", desc: "Cambia tu PIN de 4 números", min: "alumno", js: "modules/cambiar-pin/cambiar-pin.js" },
