@@ -1,11 +1,11 @@
 /* Alumnos (profesor): datos, QR, inscripción en periodos, unir duplicados, eliminar. */
 (function () {
   const EC = window.EC;
-  let cont, ctx, A = [], P = [], I = [], sel = new Set(), filtro = "todos", q = "";
+  let cont, ctx, A = [], P = [], I = [], sel = new Set(), filtro = "todos", q = "", curso = "", orden = "nombre";
   const $ = (s) => cont.querySelector(s);
 
   EC.registrar("alumnos", {
-    async montar(c, x) { cont = c; ctx = x; sel = new Set(); filtro = "todos"; q = ""; ctx.ancho(true); await cargar(); },
+    async montar(c, x) { cont = c; ctx = x; sel = new Set(); filtro = "todos"; q = ""; curso = ""; orden = "nombre"; ctx.ancho(true); await cargar(); },
   });
 
   async function cargar() {
@@ -19,39 +19,94 @@
 
   const periodosDe = (id) => I.filter((i) => i.id_alumno === id && i.activa).map((i) => P.find((p) => p.id === i.id_periodo)).filter(Boolean);
 
+  const sinCelular = (a) => !String(a.celular || "").replace(/\D/g, "");
+  const cursosDe = (a) => (a.cursos && a.cursos.length ? a.cursos : periodosDe(a.id).map((p) => p.curso));
+
   function armar() {
+    const cursos = Array.from(new Set(P.map((p) => p.curso).filter(Boolean))).sort();
     cont.innerHTML =
       '<div class="controles"><input class="input" id="q" type="search" placeholder="Buscar alumno…" autocomplete="off">' +
-      '<select id="f"><option value="todos">Todos</option><option value="sinqr">Sin QR generado</option><option value="sinper">Sin periodo</option></select>' +
-      '<button class="btn principal" id="nuevo">+ Nuevo</button></div><p class="resumen" id="res"></p>' +
+      '<button class="btn principal" id="nuevo">+ Nuevo</button></div>' +
+      '<div class="controles">' +
+      '<select id="c" aria-label="Curso"><option value="">Todos los cursos</option>' +
+      cursos.map((c) => '<option value="' + EC.esc(c) + '">' + EC.esc(c) + "</option>").join("") +
+      '<option value="__ninguno">Sin curso</option></select>' +
+      '<select id="f" aria-label="Filtro"><option value="todos">Todos</option>' +
+      '<optgroup label="Datos"><option value="sincel">📱 Sin celular (datos incompletos)</option><option value="sinqr">Sin QR generado</option><option value="sinper">Sin periodo</option></optgroup>' +
+      '<optgroup label="Plataforma"><option value="conacceso">🔓 Ya creó su PIN (tiene acceso)</option><option value="sinacceso">🔒 Aún no creó su PIN</option></optgroup>' +
+      '<optgroup label="Asistencia"><option value="f2">Faltó 2 o más clases seguidas</option><option value="f3">Faltó 3 o más clases seguidas</option><option value="f5">Faltó 5 o más clases seguidas</option><option value="nunca">Nunca vino</option></optgroup></select>' +
+      '<select id="o" aria-label="Orden"><option value="nombre">Orden: apellido</option><option value="faltas">Orden: más faltas seguidas</option><option value="ultima">Orden: última vez que vino</option></select></div>' +
+      '<p class="resumen" id="res"></p>' +
       '<div class="caja" id="lista"></div><div class="barra-flotante" id="barra" hidden></div>';
     $("#q").addEventListener("input", (e) => { q = EC.norm(e.target.value); pintar(); });
+    $("#c").addEventListener("change", (e) => { curso = e.target.value; pintar(); });
     $("#f").addEventListener("change", (e) => { filtro = e.target.value; pintar(); });
+    $("#o").addEventListener("change", (e) => { orden = e.target.value; pintar(); });
     $("#nuevo").addEventListener("click", nuevo);
     pintar();
   }
 
+  function pasaFiltro(a) {
+    if (q && EC.norm(a.nombre + " " + a.apellido + " " + a.id).indexOf(q) < 0) return false;
+    const cs = cursosDe(a);
+    if (curso === "__ninguno" && cs.length) return false;
+    if (curso && curso !== "__ninguno" && cs.indexOf(curso) < 0) return false;
+    switch (filtro) {
+      case "sincel": return sinCelular(a);
+      case "sinqr": return !a.qr;
+      case "sinper": return !periodosDe(a.id).length;
+      case "conacceso": return a.tiene_pin;
+      case "sinacceso": return !a.tiene_pin;
+      case "f2": return (a.faltas_seguidas || 0) >= 2;
+      case "f3": return (a.faltas_seguidas || 0) >= 3;
+      case "f5": return (a.faltas_seguidas || 0) >= 5;
+      case "nunca": return !a.ultima_asistencia;
+      default: return true;
+    }
+  }
+
+  function chipFaltas(a) {
+    const n = a.faltas_seguidas || 0;
+    if (!a.clases) return "";
+    if (!a.ultima_asistencia) return '<span class="chip rojo">Nunca vino</span>';
+    if (n >= 3) return '<span class="chip rojo">Faltó ' + n + " seguidas</span>";
+    if (n >= 1) return '<span class="chip ambar">Faltó ' + n + (n === 1 ? " clase" : " seguidas") + "</span>";
+    return "";
+  }
+
   function pintar() {
-    const vis = A.filter((a) => {
-      if (q && EC.norm(a.nombre + " " + a.apellido + " " + a.id).indexOf(q) < 0) return false;
-      if (filtro === "sinqr") return !a.qr;
-      if (filtro === "sinper") return !periodosDe(a.id).length;
-      return true;
-    }).sort((a, b) => EC.norm(a.apellido + a.nombre).localeCompare(EC.norm(b.apellido + b.nombre)));
-    $("#res").textContent = A.length + " en total · con QR: " + A.filter((a) => a.qr).length + " · mostrando " + vis.length;
+    const porNombre = (a, b) => EC.norm(a.apellido + a.nombre).localeCompare(EC.norm(b.apellido + b.nombre));
+    const vis = A.filter(pasaFiltro).sort((a, b) => {
+      if (orden === "faltas") return (b.faltas_seguidas || 0) - (a.faltas_seguidas || 0) || porNombre(a, b);
+      if (orden === "ultima") return String(a.ultima_asistencia || "").localeCompare(String(b.ultima_asistencia || "")) || porNombre(a, b);
+      return porNombre(a, b);
+    });
+    const base = A.filter((a) => a.rol === "alumno");
+    $("#res").innerHTML = A.length + " en total · " +
+      '<b>' + base.filter(sinCelular).length + "</b> sin celular · " +
+      '<b>' + base.filter((a) => a.tiene_pin).length + "</b> con acceso · " +
+      '<b>' + base.filter((a) => (a.faltas_seguidas || 0) >= 3).length + "</b> faltan 3+ seguidas · mostrando " + vis.length;
     $("#lista").innerHTML = vis.length ? vis.map((a) =>
       '<div class="fila"><input type="checkbox" data-sel="' + EC.esc(a.id) + '"' + (sel.has(a.id) ? " checked" : "") + ' aria-label="Seleccionar">' +
       '<div class="info"><span class="nombre">' + EC.esc(a.nombre) + " " + EC.esc(a.apellido) + "</span><span class=\"meta\">" + EC.esc(a.id) +
-      (a.celular ? " · " + EC.esc(a.celular) : " · sin celular") + "</span><span class=\"meta\">" +
+      (a.celular ? " · " + EC.esc(a.celular) : "") +
+      (a.clases ? " · vino " + (a.presentes || 0) + "/" + a.clases : "") +
+      (a.ultima_asistencia ? " · última: " + EC.esc(EC.fechaCorta(a.ultima_asistencia)) : "") + "</span><span class=\"meta\">" +
       (a.rol !== "alumno" ? '<span class="chip ambar">' + EC.esc(a.rol) + "</span>" : "") +
-      periodosDe(a.id).map((p) => '<span class="chip">' + EC.esc(p.curso) + "</span>").join("") +
+      cursosDe(a).map((c) => '<span class="chip">' + EC.esc(c) + "</span>").join("") +
+      (sinCelular(a) ? '<span class="chip rojo">📱 Sin celular</span>' : "") +
+      (a.tiene_pin ? '<span class="chip" title="Ya creó su PIN">🔓 Con acceso</span>' : '<span class="chip gris" title="Aún no creó su PIN">🔒 Sin acceso</span>') +
+      chipFaltas(a) +
       (a.qr ? '<span class="chip gris">QR ✔</span>' : "") + "</span></div>" +
-      '<button class="btn chico suave" data-op="' + EC.esc(a.id) + '">Opciones</button></div>').join("")
+      '<div style="display:flex;flex-direction:column;gap:6px">' +
+      (sinCelular(a) ? '<button class="btn chico principal" data-cel="' + EC.esc(a.id) + '">📱 Completar</button>' : "") +
+      '<button class="btn chico suave" data-op="' + EC.esc(a.id) + '">Opciones</button></div></div>').join("")
       : '<p class="vacio">Sin resultados.</p>';
     $("#lista").querySelectorAll("[data-sel]").forEach((c) => c.addEventListener("change", () => {
       c.checked ? sel.add(c.dataset.sel) : sel.delete(c.dataset.sel); barra();
     }));
     $("#lista").querySelectorAll("[data-op]").forEach((b) => b.addEventListener("click", () => opciones(b.dataset.op)));
+    $("#lista").querySelectorAll("[data-cel]").forEach((b) => b.addEventListener("click", () => editar(A.find((x) => x.id === b.dataset.cel), true)));
     barra();
   }
 
@@ -81,11 +136,12 @@
     }));
   }
 
-  function editar(a) {
+  function editar(a, enfocarCelular) {
     const cuerpo = document.createElement("div");
     cuerpo.innerHTML = '<div class="campo"><label>Nombre</label><input id="eN"></div><div class="campo"><label>Apellido</label><input id="eA"></div><div class="campo"><label>Celular</label><input id="eC" type="tel"></div>';
     cuerpo.querySelector("#eN").value = a.nombre; cuerpo.querySelector("#eA").value = a.apellido; cuerpo.querySelector("#eC").value = a.celular || "";
-    EC.modal({ titulo: "Editar datos", cuerpo, botones: [{ texto: "Cancelar", clase: "suave" }, { texto: "Guardar", clase: "principal", accion: async () => {
+    if (enfocarCelular) setTimeout(() => cuerpo.querySelector("#eC").focus(), 80);
+    EC.modal({ titulo: enfocarCelular ? "Completar celular" : "Editar datos", cuerpo, botones: [{ texto: "Cancelar", clase: "suave" }, { texto: "Guardar", clase: "principal", accion: async () => {
       try {
         const r = await ctx.api("alumno_guardar", { id: a.id, nombre: cuerpo.querySelector("#eN").value, apellido: cuerpo.querySelector("#eA").value, celular: cuerpo.querySelector("#eC").value }, { reintentos: 0 });
         EC.toast(r.mensaje, "ok"); await cargar();

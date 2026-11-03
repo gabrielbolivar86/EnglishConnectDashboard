@@ -20,7 +20,7 @@
       '<div class="caja ayuda">Los PIN no se pueden ver. Con <b>Enviar credenciales</b> se genera un código temporal (vale 48 h) y se cierran las sesiones abiertas de esa persona; al entrar con él crea su PIN. ' +
       'Para dar el rol <b>profesor</b> o <b>registrador</b>, escribe ese valor (minúscula, una palabra) en la columna <b>Rol</b> de la pestaña <i>Credenciales</i> de la hoja.</div>' +
       '<div class="controles"><input class="input" id="q" type="search" placeholder="Buscar…" autocomplete="off"><select id="f">' +
-      '<option value="todos">Todos</option><option value="sinpin">Sin PIN</option><option value="codigo">Con código vigente</option><option value="inactivo">Desactivados</option><option value="staff">Profesores / registradores</option></select></div>' +
+      '<option value="todos">Todos</option><option value="conpin">🔓 Ya creó su PIN (tiene acceso)</option><option value="sinpin">🔒 Aún no creó su PIN</option><option value="sincel">📱 Sin celular</option><option value="codigo">Con código vigente</option><option value="inactivo">Desactivados</option><option value="staff">Profesores / registradores</option></select></div>' +
       '<p class="resumen" id="res"></p><div class="caja" id="lista"></div>';
     $("#q").addEventListener("input", (e) => { q = EC.norm(e.target.value); pintar(); });
     $("#f").addEventListener("change", (e) => { filtro = e.target.value; pintar(); });
@@ -31,16 +31,22 @@
     const vis = A.filter((a) => {
       if (q && EC.norm(a.nombre + " " + a.apellido + " " + a.usuario).indexOf(q) < 0) return false;
       if (filtro === "sinpin") return !a.tiene_pin;
+      if (filtro === "conpin") return a.tiene_pin;
+      if (filtro === "sincel") return !String(a.celular || "").replace(/\D/g, "");
       if (filtro === "codigo") return a.codigo_vigente;
       if (filtro === "inactivo") return !a.activo;
       if (filtro === "staff") return a.rol !== "alumno";
       return true;
     }).sort((a, b) => EC.norm(a.apellido + a.nombre).localeCompare(EC.norm(b.apellido + b.nombre)));
-    $("#res").textContent = A.length + " cuentas · sin PIN: " + A.filter((a) => !a.tiene_pin).length + " · mostrando " + vis.length;
+    $("#res").textContent = A.length + " cuentas · ya crearon su PIN: " + A.filter((a) => a.tiene_pin).length +
+      " · sin PIN: " + A.filter((a) => !a.tiene_pin).length +
+      " · sin celular: " + A.filter((a) => !String(a.celular || "").replace(/\D/g, "")).length + " · mostrando " + vis.length;
     $("#lista").innerHTML = vis.length ? vis.map((a) =>
       '<div class="fila"><div class="info"><span class="nombre">' + EC.esc(a.nombre) + " " + EC.esc(a.apellido) + '</span><span class="meta">' + EC.esc(a.usuario || "(sin usuario)") +
       '</span><span class="meta">' + (a.rol !== "alumno" ? '<span class="chip ambar">' + EC.esc(a.rol) + "</span>" : "") +
-      (a.tiene_pin ? "" : '<span class="chip rojo">Sin PIN</span>') + (a.codigo_vigente ? '<span class="chip">Código vigente</span>' : "") +
+      (a.tiene_pin ? '<span class="chip">🔓 Ya creó su PIN</span>' : '<span class="chip rojo">🔒 Sin PIN</span>') +
+      (String(a.celular || "").replace(/\D/g, "") ? "" : '<span class="chip ambar">📱 Sin celular</span>') +
+      (a.ultimo_login ? '<span class="chip gris">Último ingreso: ' + EC.esc(EC.fechaCorta(String(a.ultimo_login).slice(0, 10))) + "</span>" : "") + (a.codigo_vigente ? '<span class="chip">Código vigente</span>' : "") +
       (a.activo ? "" : '<span class="chip gris">Desactivado</span>') + "</span></div>" +
       '<div style="display:flex;flex-direction:column;gap:6px"><button class="btn chico principal" data-env="' + EC.esc(a.id) + '">Enviar credenciales</button>' +
       '<button class="btn chico suave" data-act="' + EC.esc(a.id) + '">' + (a.activo ? "Desactivar" : "Activar") + "</button></div></div>").join("")

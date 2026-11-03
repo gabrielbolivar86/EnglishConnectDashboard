@@ -134,7 +134,7 @@
       setMsg("Apunta al QR del alumno y presiona Escanear");
       const ps = roster.periodos;
       periodoNuevo = ps.length === 1 ? ps[0].id : "";
-      pintarPeriodos(); pintarRoster();
+      pintarPeriodos(); pintarRoster(); pintarLog();
     } catch (e) {
       setMsg("❌ " + e.message);
       EC.toast(e.message, "error");
@@ -204,8 +204,9 @@
     const a = identificar(texto);
     if (!a) { flash(false, "❌ QR no reconocido"); return; }
     if (ids.has(a.id)) { flash(false, "⚠️ " + a.nombre + " ya fue registrado"); return; }
-    agregar({ tipo: "existente", id: a.id, nombre: a.nombre, apellido: a.apellido, curso: a.curso, metodo: "qr" });
+    const r = agregar({ tipo: "existente", id: a.id, nombre: a.nombre, apellido: a.apellido, curso: a.curso, metodo: "qr" });
     flash(true, "✅ " + a.nombre + " " + a.apellido);
+    if (a.sin_celular) setTimeout(() => pedirDatosFaltantes(a, r), 1150);
   }
 
   function flash(ok, texto) {
@@ -230,14 +231,16 @@
     caja.innerHTML = lista.length ? lista.map((a) =>
       '<button data-id="' + EC.esc(a.id) + '"' + (ids.has(a.id) ? " disabled" : "") + "><span><b>" +
       EC.esc(a.apellido) + "</b>, " + EC.esc(a.nombre) + "</span><span>" +
+      (a.sin_celular ? '<span class="chip ambar" title="Falta su celular">📱 falta</span>' : "") +
       (a.curso ? '<span class="chip">' + EC.esc(a.curso) + "</span>" : "") + (ids.has(a.id) ? "✅" : "") + "</span></button>"
     ).join("") : '<p class="vacio">Sin resultados. Usa la pestaña ➕ Nuevo para registrar a alguien nuevo.</p>';
     caja.querySelectorAll("button").forEach((b) => b.addEventListener("click", async () => {
       const a = roster.alumnos.find((x) => x.id === b.dataset.id);
       if (!a || ids.has(a.id)) return;
       if (await EC.confirmar("¿Registrar a " + a.nombre + " " + a.apellido + "?", { si: "Registrar" })) {
-        agregar({ tipo: "existente", id: a.id, nombre: a.nombre, apellido: a.apellido, curso: a.curso, metodo: "lista" });
+        const r = agregar({ tipo: "existente", id: a.id, nombre: a.nombre, apellido: a.apellido, curso: a.curso, metodo: "lista" });
         sonidoOk(); EC.toast("✅ " + a.nombre + " " + a.apellido, "ok", 1500); pintarRoster();
+        if (a.sin_celular) setTimeout(() => pedirDatosFaltantes(a, r), 80);
       }
     }));
   }
@@ -251,13 +254,16 @@
     caja.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { periodoNuevo = b.dataset.id; pintarPeriodos(); }));
   }
 
-  function agregarNuevo() {
+  async function agregarNuevo() {
     if (!roster) { EC.toast("La lista aún no cargó.", "error"); return; }
     const nombre = $("#nNombre").value.trim(), apellido = $("#nApellido").value.trim(), celular = $("#nCelular").value.trim();
     if (!nombre || !apellido) { EC.toast("Nombre y apellido son obligatorios.", "error"); return; }
     if (roster.periodos.length && !periodoNuevo) { EC.toast("Elige el curso.", "error"); return; }
     const dup = roster.alumnos.find((a) => EC.norm(a.nombre) === EC.norm(nombre) && EC.norm(a.apellido) === EC.norm(apellido));
     if (dup) { EC.toast(dup.nombre + " " + dup.apellido + " ya existe: búscalo en 📋 Lista.", "error", 4500); return; }
+    if (!celular && !(await EC.confirmar("No pusiste el celular de " + nombre + ". Sin él no podrás enviarle su usuario y PIN. ¿Agregar igual?", { si: "Agregar sin celular", no: "Volver" }))) {
+      $("#nCelular").focus(); return;
+    }
     const per = roster.periodos.find((p) => p.id === periodoNuevo);
     agregar({ tipo: "nuevo", nombre, apellido, celular, id_periodo: periodoNuevo, curso: per ? per.curso : "", metodo: "nuevo" });
     ["#nNombre", "#nApellido", "#nCelular"].forEach((s) => ($(s).value = ""));
@@ -271,6 +277,31 @@
     registros.push(r);
     if (r.id) ids.add(r.id);
     guardarLocal(); pintarLog();
+    return r;
+  }
+
+  // ---------------- datos faltantes ----------------
+  const alumnoDe = (r) => (roster && r.id ? roster.alumnos.find((a) => a.id === r.id) : null);
+  const faltaCelular = (r) => r.tipo !== "nuevo" && !r.celular && !!(alumnoDe(r) || {}).sin_celular;
+
+  /** Aviso al registrar a alguien sin celular: se lo preguntas en ese momento.
+      El número viaja con el lote y el servidor sólo lo guarda si la ficha está vacía. */
+  function pedirDatosFaltantes(a, r) {
+    if (!a || !r || r.celular || document.querySelector(".modal-fondo")) return;
+    const cuerpo = document.createElement("div");
+    cuerpo.innerHTML = '<p class="texto-modal">A <b>' + EC.esc(a.nombre + " " + a.apellido) + "</b> le falta el <b>celular</b>. " +
+      "Pregúntaselo ahora para poder enviarle su usuario y PIN.</p>" +
+      (a.tiene_pin ? "" : '<p class="ayuda">Todavía no entró a la plataforma.</p>') +
+      '<div class="campo"><label>Celular</label><input id="pCel" type="tel" inputmode="tel" autocomplete="off" placeholder="Ej. 71234567"></div>';
+    EC.modal({ titulo: "📱 Falta información", cuerpo, botones: [
+      { texto: "Ahora no", clase: "suave" },
+      { texto: "Guardar", clase: "principal", accion: () => {
+        const v = cuerpo.querySelector("#pCel").value.replace(/[^\d+]/g, "");
+        if (v.replace(/\D/g, "").length < 7) { EC.toast("Ese número parece incompleto.", "error"); return false; }
+        r.celular = v; a.sin_celular = false;
+        guardarLocal(); pintarLog(); if (modo === "lista") pintarRoster();
+        EC.toast("📱 Celular anotado (se guarda al terminar el registro)", "ok", 2500);
+      } }] });
   }
 
   async function quitar(clave) {
@@ -301,12 +332,18 @@
   function filaLog(r) {
     return '<div class="esc-item"><span>' + EC.esc(r.nombre) + " " + EC.esc(r.apellido) + '</span><span class="der"><span class="chip">' +
       (ETIQUETA[r.metodo] || "") + '</span><span class="hora">' + EC.esc(r.hora) + "</span>" +
+      (r.tipo !== "nuevo" && r.celular ? '<span class="chip" title="Celular anotado hoy">📱✔</span>' : "") +
+      (faltaCelular(r) ? '<button class="ic" data-cel="' + r.claveLocal + '" title="Falta su celular: completar">📱⚠️</button>' : "") +
       (r.tipo === "nuevo" ? '<button class="ic" data-ed="' + r.claveLocal + '" title="Editar">✏️</button>' : "") +
       '<button class="ic" data-del="' + r.claveLocal + '" title="Quitar">🗑️</button></span></div>';
   }
   function enlazarLog(raiz) {
     raiz.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => quitar(b.dataset.del)));
     raiz.querySelectorAll("[data-ed]").forEach((b) => b.addEventListener("click", () => editar(b.dataset.ed)));
+    raiz.querySelectorAll("[data-cel]").forEach((b) => b.addEventListener("click", () => {
+      const r = registros.find((x) => x.claveLocal === b.dataset.cel);
+      if (r) pedirDatosFaltantes(alumnoDe(r), r);
+    }));
   }
   function pintarLog() {
     $("#logTitulo").textContent = "Registrados hoy (" + registros.length + ")";
