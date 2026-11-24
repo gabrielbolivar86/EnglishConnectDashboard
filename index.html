@@ -1,63 +1,15 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<meta name="theme-color" content="#218633">
-<title>English Connect</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Scoutie+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="core/estilos.css?v=3">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>English Connect se mudó</title>
+<meta http-equiv="refresh" content="0; url=https://english-connect-blue.vercel.app/">
+<link rel="canonical" href="https://english-connect-blue.vercel.app/">
+<script>location.replace("https://english-connect-blue.vercel.app/" + location.search);</script>
+<style>body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#eef5ec;color:#16291c;text-align:center;padding:24px}a{color:#1f7a32;font-weight:700}</style>
 </head>
 <body>
-
-<!-- ===== Inicio de sesión (único para todos los roles) ===== -->
-<div id="vistaLogin" class="pantalla-login" hidden>
-  <form class="caja-login" id="formLogin" autocomplete="on">
-    <div class="marca">English<i>Connect</i></div>
-    <p class="sub">Entra con tu usuario y tu PIN.</p>
-    <div class="campo"><input id="loginUsuario" name="username" placeholder="usuario (ej. maria.perez)" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
-    <div class="campo"><input id="loginPin" name="password" type="password" inputmode="numeric" maxlength="8" placeholder="PIN" autocomplete="current-password"></div>
-    <button class="btn principal grande" id="btnLogin" type="submit">Entrar</button>
-    <p class="error-texto" id="errorLogin" role="alert"></p>
-  </form>
-</div>
-
-<!-- ===== Crear PIN (primer ingreso o código temporal) ===== -->
-<div id="vistaPin" class="pantalla-login" hidden>
-  <form class="caja-login" id="formPin">
-    <div class="marca">Crea tu PIN</div>
-    <p class="sub">Elige un PIN de 4 números. Lo usarás para entrar de ahora en adelante.</p>
-    <div class="campo"><input id="pinNuevo" type="password" inputmode="numeric" maxlength="4" placeholder="PIN nuevo (4 números)" autocomplete="new-password"></div>
-    <div class="campo"><input id="pinRepite" type="password" inputmode="numeric" maxlength="4" placeholder="Repite el PIN" autocomplete="new-password"></div>
-    <button class="btn principal grande" id="btnPin" type="submit">Guardar PIN</button>
-    <p class="error-texto" id="errorPin" role="alert"></p>
-  </form>
-</div>
-
-<!-- ===== Aplicación ===== -->
-<div id="app" hidden>
-  <header class="barra">
-    <button id="btnVolver" hidden aria-label="Volver">←</button>
-    <div class="titulo-wrap"><h1 id="tituloApp">English Connect</h1><p id="subtituloApp"></p></div>
-    <button id="btnDebug" aria-label="Registro de depuración">🐞</button>
-    <button id="btnSalir">Salir</button>
-  </header>
-  <div class="panel-debug" id="panelDebug" hidden>
-    <div class="cab"><span>LOG</span><span id="limpiarDebug" style="cursor:pointer">limpiar</span></div>
-    <div id="debugLista"></div>
-  </div>
-  <main id="contenido"></main>
-</div>
-
-<div id="toasts"></div>
-
-<script src="core/config.js?v=3"></script>
-<script src="core/ui.js?v=3"></script>
-<script src="core/api.js?v=3"></script>
-<script src="core/badge.js?v=3"></script>
-<script src="modules/registry.js?v=3"></script>
-<script src="core/app.js?v=3"></script>
+<p>English Connect ahora está en<br><a href="https://english-connect-blue.vercel.app/">english-connect-blue.vercel.app</a></p>
 </body>
 </html>
